@@ -110,6 +110,8 @@ public struct AgentStatus: Identifiable, Equatable, Sendable {
     public var liveCost: LiveCost
     /// The full working directory the transcript names (METRICS 10.6); nil when it names none.
     public var cwdPath: String?
+    /// Session id from transcript metadata, when the source provides one.
+    public var sessionId: String?
 
     public init(
         id: String,
@@ -124,7 +126,8 @@ public struct AgentStatus: Identifiable, Equatable, Sendable {
         parentId: String? = nil,
         liveCost: LiveCost = .zero,
         cwdPath: String? = nil,
-        modes: ExecutionModes = .empty
+        modes: ExecutionModes = .empty,
+        sessionId: String? = nil
     ) {
         self.id = id
         self.source = source
@@ -139,6 +142,7 @@ public struct AgentStatus: Identifiable, Equatable, Sendable {
         self.parentId = parentId
         self.liveCost = liveCost
         self.cwdPath = cwdPath
+        self.sessionId = sessionId
     }
 }
 

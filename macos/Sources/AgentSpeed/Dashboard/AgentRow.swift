@@ -11,6 +11,8 @@ struct AgentRow: View {
     let now: Date
     /// The scrolling region's height; nil for standalone previews.
     var viewportHeight: CGFloat? = nil
+    /// Local Codex session title when available; never used for reporting or history.
+    var sessionTitle: String? = nil
 
     @Environment(\.colorScheme) private var colorScheme
     @State private var isVisibleInList = true
@@ -19,6 +21,7 @@ struct AgentRow: View {
         let l10n = model.l10n
         let sourceName = l10n(agent.source.titleKey)
         let project = agent.project.isEmpty ? sourceName : agent.project
+        let displayName = sessionTitle ?? project
         // Model first: when space runs out the source name truncates, and the badge color still carries it.
         let detail = [agent.model, sourceName].compactMap { $0?.isEmpty == false ? $0 : nil }.joined(separator: " · ")
         // Attributed traffic today (DESIGN 10, Agents): the line ends with `· ↓ 2.10 MB`, kept whole while the model and
@@ -37,10 +40,10 @@ struct AgentRow: View {
             .anchorPreference(key: BadgeAnchors.self, value: .bounds) { [agent.id: $0] }
 
             AgentIdentityLabel(
-                project: project,
+                project: displayName,
                 detail: detail,
                 trafficSuffix: trafficSuffix,
-                projectAccessibilityLabel: agent.isSubagent ? "\(project), \(l10n("agents.subagent"))" : project,
+                projectAccessibilityLabel: agent.isSubagent ? "\(displayName), \(l10n("agents.subagent"))" : displayName,
                 reduceMotion: model.accessibility.reduceMotion || !isVisibleInList
             )
             .layoutPriority(1)
@@ -76,11 +79,12 @@ struct AgentRow: View {
         }
         .contentShape(Rectangle())
         .help(AgentRowText.tooltip(
-            project: project,
+            project: displayName,
             detail: detail,
             status: status,
             traffic: traffic.map { l10n("traffic.agent.tooltip", TrafficText(model: model).pair($0)) },
-            mode: ExecutionModeText.detail(agent.modes, l10n)
+            mode: ExecutionModeText.detail(agent.modes, l10n),
+            workspace: sessionTitle != nil && project != displayName ? project : nil
         ))
         .accessibilityElement(children: .combine)
         .accessibilityValue(status)
@@ -115,8 +119,9 @@ struct AgentRow: View {
 
 enum AgentRowText {
     /// Keep the full identity in the existing row tooltip, including model and source when their labels are clipped.
-    static func tooltip(project: String, detail: String, status: String, traffic: String?, mode: String) -> String {
+    static func tooltip(project: String, detail: String, status: String, traffic: String?, mode: String, workspace: String? = nil) -> String {
         var lines = ["\(project) · \(status)"]
+        if let workspace, !workspace.isEmpty { lines.append(workspace) }
         if !detail.isEmpty { lines.append(detail) }
         if let traffic, !traffic.isEmpty { lines.append(traffic) }
         if !mode.isEmpty { lines.append(mode) }

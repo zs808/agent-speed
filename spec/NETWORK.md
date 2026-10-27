@@ -134,8 +134,8 @@ Costs are computed in USD (METRICS 9.8). Rates are needed only while the display
 
 ## 5. Privacy wording
 
-The About pane shows `privacy.statement` (`spec/strings.json`, all four languages; it replaces
-`settings.about.privacy` when the cost feature ships). The README privacy section is replaced by the text below when
+The Windows About pane shows `privacy.statement` (`spec/strings.json`); the macOS About pane uses
+`mac.privacy.statement` (`macos/Resources/strings.macos.json`) to disclose locally displayed Codex titles. The README privacy section is replaced by the text below when
 the cost feature ships (until then the README describes the released app).
 
 - English (`README.md`):
@@ -145,8 +145,9 @@ the cost feature ships (until then the README describes the released app).
   > than US dollars — a daily download of public exchange rates (open.er-api.com, with the fawazahmed0 currency API
   > and Frankfurter as fallbacks). Every user requests the same files, so no server learns your currency, models or
   > usage. One switch in Settings turns all network access off; costs then use the price table and rates shipped with
-  > the app. Agent Speed never stores or displays conversation content — only token counts, model names and project
-  > folder names. The usage history keeps only daily totals (including each day's API-equivalent cost), in a small
+  > the app. Agent Speed does not store or display conversation messages. On macOS, the dashboard may display locally
+  > stored Codex session titles; titles can include words from your inputs and are never sent or saved in usage history.
+  > The usage history keeps only daily totals (including each day's API-equivalent cost), in a small
   > database on your computer (`~/Library/Application Support/AgentSpeed`, `%LOCALAPPDATA%\AgentSpeed`), and can be
   > cleared in Settings. Updates are verified against the release's SHA-256 checksums before they are installed; the
   > checksums are published with the release, so they catch corrupted or tampered downloads, not a compromised
@@ -156,8 +157,8 @@ the cost feature ships (until then the README describes the released app).
   > GitHub Releases 檢查更新、每天從本專案下載公開的模型價格表（GitHub，以 jsDelivr 為備援），以及只有在你選擇以美元
   > 以外的貨幣顯示費用時，每天下載公開匯率（open.er-api.com，以 fawazahmed0 currency API 和 Frankfurter 為備援）。
   > 每位使用者下載的都是同一份檔案，所以伺服器無從得知你的貨幣、模型或用量。設定裡的一個開關就能關閉所有網路連線，
-  > 此時費用改用 App 內建的價格表與匯率。Agent Speed 從不儲存或顯示對話內容，只使用 token 數量、模型名稱和專案資料夾
-  > 名稱。用量歷史只保存每日總計（含每日的 API 等值費用），存在你電腦上的一個小型資料庫
+  > 此時費用改用 App 內建的價格表與匯率。Agent Speed 不儲存或顯示對話正文。macOS 面板可在本機顯示 Codex 工作階段
+  > 標題，標題可能包含輸入的文字；標題不會上報或加入用量歷史。用量歷史只保存每日總計（含每日的 API 等值費用），存在你電腦上的一個小型資料庫
   > （`~/Library/Application Support/AgentSpeed`、`%LOCALAPPDATA%\AgentSpeed`），可在設定中清除。更新在安裝前會
   > 以該版本發布的 SHA-256 校驗碼驗證；校驗碼與版本一起發布，因此能攔下損壞或遭竄改的下載檔，但無法防範儲存庫本身
   > 遭入侵。價格表是依嚴格規則檢查的純資料，沒有數位簽章。
@@ -166,8 +167,8 @@ the cost feature ships (until then the README describes the released app).
   > GitHub Releases 检查更新、每天从本项目下载公开的模型价格表（GitHub，以 jsDelivr 为备用），以及仅在你选择以美元
   > 以外的货币显示费用时，每天下载公开汇率（open.er-api.com，以 fawazahmed0 currency API 和 Frankfurter 为备用）。
   > 每位用户下载的都是同一份文件，因此服务器无从得知你的货币、模型或用量。设置里的一个开关即可关闭所有网络连接，
-  > 此时费用改用应用内置的价格表和汇率。Agent Speed 从不保存或显示对话内容，只使用 token 数量、模型名称和项目文件夹
-  > 名称。用量历史只保存每日汇总（含每日的 API 等值费用），存放在你电脑上的一个小型数据库
+  > 此时费用改用应用内置的价格表和汇率。Agent Speed 不保存或显示对话正文。macOS 面板可在本机显示 Codex 会话标题，
+  > 标题可能包含输入的文字；标题不会上报或加入用量历史。用量历史只保存每日汇总（含每日的 API 等值费用），存放在你电脑上的一个小型数据库
   > （`~/Library/Application Support/AgentSpeed`、`%LOCALAPPDATA%\AgentSpeed`），可在设置中清除。更新在安装前会
   > 用该版本发布的 SHA-256 校验和验证；校验和与版本一同发布，因此能拦截损坏或被篡改的下载文件，但无法防范仓库本身
   > 被入侵。价格表是按严格规则校验的纯数据，没有数字签名。
@@ -178,7 +179,8 @@ the cost feature ships (until then the README describes the released app).
   > 表示するときだけ行う公開為替レートの 1 日 1 回のダウンロード（open.er-api.com、予備に fawazahmed0 currency API と
   > Frankfurter）。全員が同じファイルを取得するため、サーバーがあなたの通貨・モデル・使用量を知ることはありません。
   > 設定のスイッチ 1 つですべての通信をオフにでき、その場合はアプリ内蔵の価格表とレートで費用を計算します。Agent
-  > Speed は会話の内容を保存・表示せず、使うのはトークン数・モデル名・プロジェクトフォルダー名だけです。使用履歴は
+  > Speed は会話本文を保存・表示しません。macOS では Codex のセッション名をローカルで表示できます。名前には入力した
+  > 文言が含まれる場合がありますが、送信や使用履歴への保存はされません。使用履歴は
   > 日別の集計（各日の API 換算費用を含む）だけを、お使いのコンピューター上の小さなデータベース
   > （`~/Library/Application Support/AgentSpeed`、`%LOCALAPPDATA%\AgentSpeed`）に保存し、設定から消去できます。
   > アップデートはインストール前にリリースの SHA-256 チェックサムで検証します。チェックサムはリリースと一緒に公開

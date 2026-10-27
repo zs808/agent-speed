@@ -167,7 +167,9 @@ struct CwdPathTests {
         var state = AgentState(source: .codex)
         #expect(EngineAgent(id: "a", state: state).cwdPath == nil)
         state.setProject(fromWorkingDirectory: "/w/p")
+        state.thread = SessionThread(id: "session-42", parentId: nil, createdMs: 0)
         #expect(EngineAgent(id: "a", state: state, parentId: "b").cwdPath == "/w/p")
+        #expect(EngineAgent(id: "a", state: state, parentId: "b").sessionId == "session-42")
     }
 
     @Test func snapshotAgentsCarryTheirPathThroughLiveUpdates() throws {
@@ -182,6 +184,7 @@ struct CwdPathTests {
         let seeded = agents(at: 1_792_490_440_000)
         let rollout = "rollout-2026-10-20T10-00-00-modern.jsonl"
         #expect(try Self.agent(seeded, endingWith: rollout).cwdPath == "/Users/dev/projects/rocket")
+        #expect(try Self.agent(seeded, endingWith: rollout).sessionId == "thread-main")
         #expect(try Self.agent(seeded, endingWith: "s-cli.jsonl").cwdPath == "/Users/dev/projects/nova")
         #expect(try Self.agent(seeded, endingWith: "s-desk.jsonl").cwdPath == "/Users/dev/projects/orbit")
         #expect(try Self.agent(seeded, endingWith: "session-dsh-main/session.v4.jsonl.zstd").cwdPath == "/Users/dev/projects/quasar")
@@ -215,6 +218,7 @@ struct CwdPathTests {
         let status = AgentStatus(id: "a", source: .codex, project: "p", model: nil, phase: .idle, isSubagent: false,
                                  live: .zero, recentSpeed: nil, lastActivity: Date(timeIntervalSince1970: 0))
         #expect(status.cwdPath == nil)
+        #expect(status.sessionId == nil)
         var moved = status
         moved.cwdPath = "/w/p"
         #expect(moved != status)

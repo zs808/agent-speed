@@ -69,10 +69,10 @@ struct AboutPane: View {
         let l10n = model.l10n
         let report = model.report
         guard report.isOn else {
-            return [l10n("privacy.statement"), l10n("privacy.traffic"), l10n("privacy.report")]
+            return [l10n("mac.privacy.statement"), l10n("privacy.traffic"), l10n("privacy.report")]
         }
         let host = report.destinationHost ?? ""
-        return [l10n("privacy.statement.report", host), l10n("privacy.traffic.report"), l10n("privacy.report")]
+        return [l10n("mac.privacy.statement.report", host), l10n("privacy.traffic.report"), l10n("privacy.report")]
     }
 
     private func privacyCard(_ paragraphs: [String]) -> some View {

@@ -15,6 +15,7 @@ struct EngineAgent: Equatable, Sendable {
     var lastLineMs: Int64?
     /// Resolved parent agent (METRICS 6.7), which may be outside the list.
     var parentId: String?
+    var sessionId: String?
 
     init(
         id: String,
@@ -27,7 +28,8 @@ struct EngineAgent: Equatable, Sendable {
         lastLineMs: Int64? = nil,
         parentId: String? = nil,
         cwdPath: String? = nil,
-        modes: ExecutionModes = .empty
+        modes: ExecutionModes = .empty,
+        sessionId: String? = nil
     ) {
         self.id = id
         self.source = source
@@ -40,6 +42,7 @@ struct EngineAgent: Equatable, Sendable {
         self.inFlightStartMs = inFlightStartMs
         self.lastLineMs = lastLineMs
         self.parentId = parentId
+        self.sessionId = sessionId
     }
 
     init(id: String, state: AgentState, parentId: String? = nil) {
@@ -54,7 +57,8 @@ struct EngineAgent: Equatable, Sendable {
             lastLineMs: state.lastLineMs,
             parentId: parentId,
             cwdPath: state.cwdPath,
-            modes: state.modes
+            modes: state.modes,
+            sessionId: state.thread?.id
         )
     }
 

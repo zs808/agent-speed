@@ -7,6 +7,8 @@ struct AgentsSection: View {
     let model: AppModel
 
     @State private var order = StableAgentOrder()
+    @State private var titleIndex = CodexSessionTitleIndex()
+    @State private var sessionTitles: [String: String] = [:]
     /// True while a collapse animates: the extra rows stay until the closing region has slid over them.
     @State private var isCollapsing = false
     @Environment(\.colorScheme) private var colorScheme
@@ -23,6 +25,14 @@ struct AgentsSection: View {
         let hidden = expanded ? 0 : total - visible
         let tree = AgentTree(rows)
         let depths = tree.depths
+        let indexURL = CodexSessionTitleIndex.indexURL(
+            sessionsRoot: model.settings.codexRoot,
+            codexHome: ProcessInfo.processInfo.environment["CODEX_HOME"],
+            home: FileManager.default.homeDirectoryForCurrentUser
+        )
+        let titleWatch = TitleWatch(indexURL: indexURL, ids: Array(Set(snapshot.agents.compactMap {
+            $0.source == .codex ? $0.sessionId : nil
+        })).sorted())
 
         VStack(alignment: .leading, spacing: DashboardLayout.rowSpacing) {
             HStack(spacing: Spacing.s) {
@@ -51,7 +61,8 @@ struct AgentsSection: View {
                                 agent: agent,
                                 depth: min(depths[index], DashboardLayout.maxAgentDepth),
                                 now: snapshot.timestamp,
-                                viewportHeight: DashboardLayout.agentListHeight(rows: visible)
+                                viewportHeight: DashboardLayout.agentListHeight(rows: visible),
+                                sessionTitle: AgentSessionTitle.resolve(for: agent, among: snapshot.agents, titles: sessionTitles)
                             )
                             .transition(.asymmetric(insertion: fadeIn, removal: .identity))
                             .zIndex(Double(rows.count - index))
@@ -82,6 +93,7 @@ struct AgentsSection: View {
             }
         }
         .animation(model.dashboardResizeMotion, value: rows.map(\.id))
+        .task(id: titleWatch) { await watchTitles(titleWatch) }
         #if DEBUG
         .onReceive(NotificationCenter.default.publisher(for: MotionHarness.toggleAgents)) { _ in toggle() }
         #endif
@@ -90,6 +102,24 @@ struct AgentsSection: View {
     /// Under Reduce Motion nothing moves, so appearing rows carry their own fade.
     private var fadeIn: AnyTransition {
         model.accessibility.reduceMotion ? .opacity.animation(Motion.fade) : .opacity
+    }
+
+    private struct TitleWatch: Equatable {
+        let indexURL: URL
+        let ids: [String]
+    }
+
+    private func watchTitles(_ watch: TitleWatch) async {
+        guard !watch.ids.isEmpty else {
+            sessionTitles = [:]
+            return
+        }
+        while !Task.isCancelled {
+            let titles = await titleIndex.titles(indexURL: watch.indexURL, sessionIDs: Set(watch.ids))
+            guard !Task.isCancelled else { return }
+            if sessionTitles != titles { sessionTitles = titles }
+            do { try await Task.sleep(for: .seconds(2)) } catch { return }
+        }
     }
 
     private func toggle() {
