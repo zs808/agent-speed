@@ -50,7 +50,8 @@ struct AgentsSection: View {
                                 model: model,
                                 agent: agent,
                                 depth: min(depths[index], DashboardLayout.maxAgentDepth),
-                                now: snapshot.timestamp
+                                now: snapshot.timestamp,
+                                viewportHeight: DashboardLayout.agentListHeight(rows: visible)
                             )
                             .transition(.asymmetric(insertion: fadeIn, removal: .identity))
                             .zIndex(Double(rows.count - index))

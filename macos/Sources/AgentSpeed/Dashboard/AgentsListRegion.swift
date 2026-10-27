@@ -24,9 +24,9 @@ struct AgentsListRegion<Content: View>: View {
                         .id(RegionMetrics.top)
                     content
                 }
-                .onGeometryChange(for: CGRect.self) { $0.frame(in: .named(RegionMetrics.space)) } action: { contentFrame = $0 }
+                .onGeometryChange(for: CGRect.self) { $0.frame(in: .named(AgentListCoordinate.space)) } action: { contentFrame = $0 }
             }
-            .coordinateSpace(.named(RegionMetrics.space))
+            .coordinateSpace(.named(AgentListCoordinate.space))
             .scrollDisabled(!scrolls)
             // A system scroller would take width from the tok/s column in the legacy style; the overlay knob never does.
             .scrollIndicators(.never)
@@ -67,8 +67,11 @@ private struct AnimatedHeight: ViewModifier, Animatable {
     }
 }
 
-private enum RegionMetrics {
+enum AgentListCoordinate {
     static let space = "agentsListRegion"
+}
+
+private enum RegionMetrics {
     static let top = "agentsListTop"
     static let fade: CGFloat = 16
 }

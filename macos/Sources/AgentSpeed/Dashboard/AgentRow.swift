@@ -9,8 +9,11 @@ struct AgentRow: View {
     let depth: Int
     /// Snapshot time, the reference for "x minutes ago".
     let now: Date
+    /// The scrolling region's height; nil for standalone previews.
+    var viewportHeight: CGFloat? = nil
 
     @Environment(\.colorScheme) private var colorScheme
+    @State private var isVisibleInList = true
 
     var body: some View {
         let l10n = model.l10n
@@ -33,30 +36,20 @@ struct AgentRow: View {
             )
             .anchorPreference(key: BadgeAnchors.self, value: .bounds) { [agent.id: $0] }
 
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
-                Text(project)
-                    .font(DashboardFont.rowTitle)
-                    .lineLimit(1)
-                    .layoutPriority(1)
-                    .accessibilityLabel(agent.isSubagent ? "\(project), \(l10n("agents.subagent"))" : project)
-                HStack(spacing: 0) {
-                    Text(detail)
-                        .lineLimit(1)
-                        .truncationMode(.tail)
-                    if let trafficSuffix {
-                        Text(trafficSuffix)
-                            .lineLimit(1)
-                            .fixedSize()
-                    }
-                }
-                .font(DashboardFont.detail)
-                .foregroundStyle(.dashboardSecondary)
-            }
+            AgentIdentityLabel(
+                project: project,
+                detail: detail,
+                trafficSuffix: trafficSuffix,
+                projectAccessibilityLabel: agent.isSubagent ? "\(project), \(l10n("agents.subagent"))" : project,
+                reduceMotion: model.accessibility.reduceMotion || !isVisibleInList
+            )
+            .layoutPriority(1)
 
             Text(ExecutionModeText.summary(agent.modes, l10n))
                 .font(.caption2.weight(.medium))
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
                 .padding(.horizontal, 6)
                 .padding(.vertical, 3)
                 .background(.primary.opacity(0.055), in: Capsule())
@@ -74,9 +67,21 @@ struct AgentRow: View {
         }
         .frame(height: DashboardLayout.rowHeight)
         .padding(.leading, CGFloat(depth) * DashboardLayout.subagentIndent)
+        .onGeometryChange(for: Bool.self) { geometry in
+            guard let viewportHeight else { return true }
+            let frame = geometry.frame(in: .named(AgentListCoordinate.space))
+            return AgentLabelScroll.isVisible(top: frame.minY, bottom: frame.maxY, viewportHeight: viewportHeight)
+        } action: { visible in
+            if isVisibleInList != visible { isVisibleInList = visible }
+        }
         .contentShape(Rectangle())
-        .help((traffic.map { "\(project) · \(status)\n" + l10n("traffic.agent.tooltip", TrafficText(model: model).pair($0)) }
-            ?? "\(project) · \(status)") + "\n" + ExecutionModeText.detail(agent.modes, l10n))
+        .help(AgentRowText.tooltip(
+            project: project,
+            detail: detail,
+            status: status,
+            traffic: traffic.map { l10n("traffic.agent.tooltip", TrafficText(model: model).pair($0)) },
+            mode: ExecutionModeText.detail(agent.modes, l10n)
+        ))
         .accessibilityElement(children: .combine)
         .accessibilityValue(status)
     }
@@ -105,5 +110,16 @@ struct AgentRow: View {
             }
             return "\(l10n("phase.idle")) · \(ago)"
         }
+    }
+}
+
+enum AgentRowText {
+    /// Keep the full identity in the existing row tooltip, including model and source when their labels are clipped.
+    static func tooltip(project: String, detail: String, status: String, traffic: String?, mode: String) -> String {
+        var lines = ["\(project) · \(status)"]
+        if !detail.isEmpty { lines.append(detail) }
+        if let traffic, !traffic.isEmpty { lines.append(traffic) }
+        if !mode.isEmpty { lines.append(mode) }
+        return lines.joined(separator: "\n")
     }
 }
