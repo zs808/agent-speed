@@ -22,6 +22,8 @@ jobs:
         run: command -v zstd || (sudo apt-get update && sudo apt-get install -y zstd)
       - name: Check fixtures with the reference implementation
         run: python3 spec/tools/reference.py --check-fixtures
+      - name: Check Maven compilation recovery
+        run: python3 spec/tools/test_maven_compile_recovery.py
       - name: Check reporting and profile contracts
         run: |
           python3 spec/tools/report_reference.py

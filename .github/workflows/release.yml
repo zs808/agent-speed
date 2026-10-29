@@ -19,6 +19,7 @@ jobs:
           python3 spec/tools/report_reference.py
           python3 spec/tools/execution_modes_reference.py
           python3 spec/tools/test_reporting_extensions.py
+          python3 spec/tools/test_maven_compile_recovery.py
 
   macos:
     name: macOS
