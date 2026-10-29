@@ -1528,6 +1528,7 @@ class Parsed:
         self.patches = []          # patch texts (heredoc bodies or words holding a `*** Begin Patch` line)
         self.apply_patch = False
         self.pipefail = False
+        self.compile_scope_unsafe = False
 
 
 def has_patch_line(text):
@@ -1587,6 +1588,10 @@ def parse_into(text, parsed, st, depth):
         apply_parens(seg.ops, st)
         ops = st.carry + seg.ops
         st.carry = []
+        # Preserve evidence of environment wrappers before prefix removal. JAVA_HOME selects the compiler;
+        # a successful lifecycle still compiles, while arbitrary variables may suppress Maven compilation.
+        if any(re.match(r"[A-Za-z_][A-Za-z0-9_]*=", w) and not w.startswith("JAVA_HOME=") for w in seg.words):
+            parsed.compile_scope_unsafe = True
         drop_keywords(seg)
         strip_prefixes(seg)
         drop_keywords(seg)
@@ -1687,6 +1692,74 @@ def choose(segs, cwd):
     return classes, best_index, best
 
 
+def maven_compile_cwd(source, tool, value, cwd):
+    """Only coverage uses the explicit Codex exec_command working directory; other parser facts stay stable."""
+    fam = FAMILY.get(source)
+    args = decode_args(value)
+    if fam == "codex" and isinstance(tool, str) and tool_name(fam, tool) == "exec_command" \
+            and args is not None and "workdir" in args:
+        return args["workdir"] if isinstance(args["workdir"], str) else None
+    return cwd
+
+
+def maven_compile_key(segs, classes, chosen, cwd):
+    """Conservative main-compile coverage, not equivalence of tests or arbitrary Maven goals.
+
+    Only a single verifier and one standard lifecycle phase (optional leading clean) qualify. Keep every
+    build/configuration token and the starting/relative directories, removing only cosmetic output, test selectors
+    and skipTests. Unknown/dynamic directories, direct plugins and compilation suppression give no evidence.
+    """
+    base = norm_cwd(cwd)
+    if base is None or not (cwd.replace("\\", "/").startswith("/") or DRIVE.match(cwd.replace("\\", "/"))):
+        return None
+    if sum(c[0] != "other" for c in classes) != 1:
+        return None
+    seg = segs[chosen]
+    if prog(seg.words[0]) != "mvn" or seg.background:
+        return None
+    for prior in segs[:chosen]:
+        if prior.words and prog(prior.words[0]) in ("cd", "pushd", "popd"):
+            if prior.op_after != "&&" or len(prior.words) != 2 or prior.words[1] in ("-", "~") \
+                    or prior.words[1].startswith("~") or any(any(c in w for c in "$`*?[") for w in prior.words):
+                return None
+    args = seg.words[1:]
+    if any(any(c in w for c in "$`*?[") for w in [base, seg.ctx] + args):
+        return None
+    phases = MVN_BUILD + MVN_TEST
+    kept, goals = [], []
+    k = 0
+    while k < len(args):
+        w = args[k]
+        if w in ("-h", "--help", "-v", "--version", "-V", "--show-version", "-fn", "--fail-never"):
+            return None
+        if w in MVN_VALUE:
+            if k + 1 >= len(args):
+                return None
+            kept.extend((w, args[k + 1]))
+            k += 2
+            continue
+        if w in COSMETIC or w.startswith(COSMETIC_PREFIX):
+            k += 1
+            continue
+        if w.startswith("-D"):
+            prop = w[2:].split("=", 1)[0]
+            if prop in ("test", "it.test", "skipTests", "surefire.failIfNoSpecifiedTests"):
+                k += 1
+                continue
+            if ("skip" in prop.lower() and prop != "maven.test.skip") or "failonerror" in prop.lower():
+                return None
+        if not w.startswith("-"):
+            goals.append(w)
+        else:
+            kept.append(w)
+        k += 1
+    if goals and goals[0] == "clean":
+        goals = goals[1:]
+    if len(goals) != 1 or goals[0] not in phases:
+        return None
+    return sha16("\x1f".join(["maven-main-compile-v1", base, seg.ctx] + kept))
+
+
 def command_info(text, cwd=None, parsed=None):
     parsed = parsed or parse_command(text, cwd)
     cwd = cwd if isinstance(cwd, str) else None
@@ -1706,9 +1779,13 @@ def command_info(text, cwd=None, parsed=None):
     later = segs[best_index + 1:]
     masked = bool(later) and ((chosen.op_after == "|" and not parsed.pipefail)
                               or any(x.op_before in (";", "||", "&") for x in later))
-    return {"class": best[0], "suite": best[1], "targeted": bool(best[2]), "key": key, "masked": masked,
+    info = {"class": best[0], "suite": best[1], "targeted": bool(best[2]), "key": key, "masked": masked,
             "background": chosen.background,
             "errorFilter": best[0] in ("build", "check") and error_filter(segs, best_index)}
+    coverage = None if masked or parsed.compile_scope_unsafe else maven_compile_key(segs, classes, best_index, cwd)
+    if coverage is not None:
+        info["mavenCompileKey"] = coverage
+    return info
 
 
 # ---------------------------------------------------------------------------- masked runs (3.10)

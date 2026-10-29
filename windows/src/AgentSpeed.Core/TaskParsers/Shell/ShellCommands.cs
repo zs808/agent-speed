@@ -224,8 +224,59 @@ internal static class ShellCommands
         }
 
         var errorFilter = best.Class is CommandClass.Build or CommandClass.Check && MaskedRuns.ErrorFilter(segs, chosen);
-        return new CommandInfo(best.Class, best.Suite, best.Targeted, key, masked, seg.Background, errorFilter);
+        return new CommandInfo(best.Class, best.Suite, best.Targeted, key, masked, seg.Background, errorFilter,
+            masked || parsed.CompileScopeUnsafe ? null : MavenCompileKey(segs, classes, chosen, cwd));
     }
+
+    private static readonly HashSet<string> MavenValues = Set("-pl", "--projects", "-f", "--file", "-s", "--settings", "-P", "--activate-profiles", "-T", "--threads", "-rf", "--resume-from", "-gs", "--global-settings", "-t", "--toolchains", "-l", "--log-file");
+    private static readonly HashSet<string> MavenPhases = Set("compile", "test-compile", "process-classes", "test", "integration-test", "verify", "install", "deploy", "package");
+    private static readonly HashSet<string> MavenReject = Set("-h", "--help", "-v", "--version", "-V", "--show-version", "-fn", "--fail-never");
+
+    private static string? MavenCompileKey(List<ShellSegment> segs, CommandClassification[] classes, int chosen, string? cwd)
+    {
+        var basis = TaskText.NormCwd(cwd);
+        var rawCwd = cwd?.Replace('\\', '/');
+        var absolute = rawCwd is not null && (rawCwd.StartsWith('/') ||
+            (rawCwd.Length >= 3 && char.IsAsciiLetter(rawCwd[0]) && rawCwd[1] == ':' && rawCwd[2] == '/'));
+        if (basis is null || !absolute || classes.Count(c => c.Class != CommandClass.Other) != 1)
+            return null;
+        var seg = segs[chosen];
+        if (Prog(seg.Words[0]) != "mvn" || seg.Background) return null;
+        foreach (var prior in segs.Take(chosen))
+        {
+            if (prior.Words.Length > 0 && Prog(prior.Words[0]) is "cd" or "pushd" or "popd")
+            {
+                if (prior.OpAfter != "&&" || prior.Words.Length != 2 || prior.Words[1] == "-" || prior.Words[1].StartsWith('~')
+                    || prior.Words.Any(IsDynamic)) return null;
+            }
+        }
+        var args = seg.Words.Skip(1).ToArray();
+        if (new[] { basis, seg.Context }.Concat(args).Any(IsDynamic)) return null;
+        List<string> kept = [], goals = [];
+        for (var k = 0; k < args.Length; k++)
+        {
+            var w = args[k];
+            if (MavenReject.Contains(w)) return null;
+            if (MavenValues.Contains(w))
+            {
+                if (k + 1 >= args.Length) return null;
+                kept.Add(w); kept.Add(args[++k]); continue;
+            }
+            if (Cosmetic.Contains(w) || CosmeticPrefixes.Any(prefix => w.StartsWith(prefix, StringComparison.Ordinal))) continue;
+            if (w.StartsWith("-D", StringComparison.Ordinal))
+            {
+                var prop = w[2..].Split('=', 2)[0];
+                if (prop is "test" or "it.test" or "skipTests" or "surefire.failIfNoSpecifiedTests") continue;
+                if ((prop.Contains("skip", StringComparison.OrdinalIgnoreCase) && prop != "maven.test.skip") || prop.Contains("failonerror", StringComparison.OrdinalIgnoreCase)) return null;
+            }
+            if (!w.StartsWith('-')) goals.Add(w); else kept.Add(w);
+        }
+        if (goals.Count > 0 && goals[0] == "clean") goals.RemoveAt(0);
+        if (goals.Count != 1 || !MavenPhases.Contains(goals[0])) return null;
+        return TaskText.Sha16(string.Join("\x1f", new[] { "maven-main-compile-v1", basis, seg.Context }.Concat(kept)));
+    }
+
+    private static bool IsDynamic(string word) => word.IndexOfAny(['$', '`', '*', '?', '[']) >= 0;
 
     /// <summary>The key (3.7): the digest of the kept segments' normalised tokens.</summary>
     private static string KeyOf(List<ShellSegment> segs, CommandClassification[] classes, string? cwd)

@@ -30,7 +30,7 @@ internal static class TaskDumpJson
                 if (action.Command is { } command)
                 {
                     w.WritePropertyName("command");
-                    WriteCommand(w, command.Class, command.Suite, command.Targeted, command.Key);
+                    WriteCommand(w, command.Class, command.Suite, command.Targeted, command.Key, command.MavenCompileKey);
                 }
 
                 if (action.Hunks is { } hunks)
@@ -346,13 +346,14 @@ internal static class TaskDumpJson
         w.WriteString("agent", value.AgentId is { } agent ? label(agent) : null);
     }
 
-    private static void WriteCommand(Utf8JsonWriter w, CommandClass cls, string? suite, bool targeted, string key)
+    private static void WriteCommand(Utf8JsonWriter w, CommandClass cls, string? suite, bool targeted, string key, string? mavenCompileKey)
     {
         w.WriteStartObject();
         w.WriteString("class", TaskWire.Name(cls));
         w.WriteString("suite", suite);
         w.WriteBoolean("targeted", targeted);
         w.WriteString("key", key);
+        if (mavenCompileKey is not null) { w.WriteString("mavenCompileKey", mavenCompileKey); }
         w.WriteEndObject();
     }
 

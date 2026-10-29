@@ -144,19 +144,23 @@ public struct TaskEvaluation: Sendable {
         for check in checks.indices {
             let own = checks[check].own
             let first = acts[own[0]]
-            guard first.targeted, let suite = first.suite else {
-                checks[check].seq = own
-                continue
-            }
-            if passesBySuite == nil { passesBySuite = fullPassesBySuite() }
-            let candidates = passesBySuite?[TaskOrdinalKey(suite)] ?? []
-            var start = Self.firstPosition(after: own[0], in: candidates)
             var added: [Int] = []
-            while start < candidates.count {
-                if acts[candidates[start]].check != check { added.append(candidates[start]) }
-                start += 1
+            if first.targeted, let suite = first.suite, !(first.suite == "mvn compile" && first.command?.mavenCompileKey != nil) {
+                if passesBySuite == nil { passesBySuite = fullPassesBySuite() }
+                let candidates = passesBySuite?[TaskOrdinalKey(suite)] ?? []
+                let start = Self.firstPosition(after: own[0], in: candidates)
+                added += candidates[start...].filter { acts[$0].check != check }
             }
-            checks[check].seq = added.isEmpty ? own : Self.merged(own, added)
+            if first.suite == "mvn compile", let key = first.command?.mavenCompileKey {
+                added += runs.filter { candidate in
+                    guard candidate > own[0], acts[candidate].result == .pass,
+                          acts[candidate].command?.mavenCompileKey == key, acts[candidate].check != check,
+                          let time = acts[candidate].outcomeT else { return false }
+                    return own.filter { $0 < candidate && acts[$0].result == .fail }
+                        .allSatisfy { acts[$0].outcomeT.map { $0 <= time } ?? false }
+                }
+            }
+            checks[check].seq = added.isEmpty ? own : Self.merged(own, added.sorted())
         }
         for check in checks.indices {
             let seq = checks[check].seq

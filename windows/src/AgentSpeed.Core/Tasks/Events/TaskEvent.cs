@@ -52,11 +52,11 @@ public sealed class TaskAction(long t, ActionKind kind, string tool, string dige
 }
 
 /// <summary>The fields <c>class</c>, <c>suite</c>, <c>targeted</c> and <c>key</c> of <c>command_info</c>.</summary>
-public sealed record TaskCommand(CommandClass Class, string? Suite, bool Targeted, string Key)
+public sealed record TaskCommand(CommandClass Class, string? Suite, bool Targeted, string Key, string? MavenCompileKey = null)
 {
     public static TaskCommand Of(CommandInfo info)
     {
         ArgumentNullException.ThrowIfNull(info);
-        return new TaskCommand(info.Class, info.Suite, info.Targeted, info.Key);
+        return new TaskCommand(info.Class, info.Suite, info.Targeted, info.Key, info.MavenCompileKey);
     }
 }

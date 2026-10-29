@@ -2127,7 +2127,7 @@ outputs arrive here already parsed; their inputs are never kept.
 | `continuation` | *Continuation*, above |
 | `kind` | `action_kind(source, tool, input, cwd)`: `read`, `search`, `edit`, `command`, `delegate`, `web` or `other` |
 | `tool`, `digest` | as 6.10 |
-| `command` | `kind == "command"` with command text (TASK-PARSERS 3.1) only: the fields `class` (`test`, `build`, `check` or `other`), `suite`, `targeted` and `key` of `command_info(text, cwd)` |
+| `command` | `kind == "command"` with command text (TASK-PARSERS 3.1) only: the fields `class` (`test`, `build`, `check` or `other`), `suite`, `targeted` and `key` of `command_info(text, cwd)`, plus optional `mavenCompileKey` (TASK-PARSERS 3.5) |
 | `outcome` | once the result is read: `outcome(source, result, t, tool, input, cwd)` = `{exitCode, failed, t}` (`failed` true, false or null; `t` the time of the result line) |
 | `failures` | with the outcome of an action that has `command`: `failures(info, result_text(source, result), cwd, outcome.failed)` = `{fingerprints, failedCount, passedCount, framework}` |
 | `hunks` | `kind == "edit"` only: `edit_hunks(source, tool, input, cwd)` = `[{file, old, new}]`, 16-hex digests; `old` is null for a whole-file write, whose `new` is the digest of the whole content |
@@ -2294,6 +2294,14 @@ The error count of a run is `F = 0` for a pass and `max(1, |fingerprints|, faile
 own: a narrowed run never makes the full suite look converged. The *sequence* of a check is its runs in order; a targeted
 check whose suite is known also gets every **passing** non-targeted run of that suite after its own first run (a full
 pass proves the targeted part too; a failing full run says nothing about it).
+
+Exception: a `mvn compile` run with `mavenCompileKey` belongs to `maven-compile:<digest>` rather than the
+unscoped suite or whole-command key. Its sequence also includes later **passing** standard Maven lifecycle runs
+with the same digest (TASK-PARSERS 3.5). These passes must have a known completion time at or after every preceding
+failed compile's completion; an overlapping command that completed earlier cannot establish recovery. This scoped
+compile check does not receive the ordinary unscoped full-suite fallback. A failed test is never closed by a
+successful compile. The optional digest is carried in command events and historical analysis is invalidated when
+this rule changes, so old records are recomputed from their original logs.
 
 **Episodes.** Per check, over its sequence: a fail whose predecessor is a pass, or that has none, opens an episode; the
 fails after it join; the next pass closes it (*recovered*). Its *attempts* are its number of fails.

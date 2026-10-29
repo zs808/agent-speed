@@ -79,7 +79,7 @@ public sealed partial class TaskScoreCaseTests
 
             var command = Member(e, "command") is { ValueKind: JsonValueKind.Object } c
                 ? new TaskCommand(ClassOf(c.GetProperty("class").GetString()), OptionalString(Member(c, "suite")),
-                    Member(c, "targeted").ValueKind == JsonValueKind.True, c.GetProperty("key").GetString()!)
+                    Member(c, "targeted").ValueKind == JsonValueKind.True, c.GetProperty("key").GetString()!, OptionalString(Member(c, "mavenCompileKey")))
                 : null;
             List<EditHunk>? hunks = null;
             if (Member(e, "hunks") is { ValueKind: JsonValueKind.Array } list)

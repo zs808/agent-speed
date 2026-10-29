@@ -37,7 +37,60 @@ enum CommandAnalysis {
         let errorFilter = (best.commandClass == .build || best.commandClass == .check)
             && MaskedRuns.isErrorFilter(segments, chosen: bestIndex)
         return TaskCommandInfo(commandClass: best.commandClass, suite: best.suite, targeted: best.targeted, key: key,
-                               masked: masked, background: chosen.background, errorFilter: errorFilter)
+                               masked: masked, background: chosen.background, errorFilter: errorFilter,
+                               mavenCompileKey: masked || command.compileScopeUnsafe ? nil : mavenCompileKey(segments, classes, bestIndex, cwd))
+    }
+
+    private static func mavenCompileKey(_ segments: [ShellSegment], _ classes: [Classification],
+                                        _ chosen: Int, _ cwd: String?) -> String? {
+        guard let cwd else { return nil }
+        let rawBase = cwd.replacingOccurrences(of: "\\", with: "/")
+        var base = rawBase
+        while base.hasSuffix("/") { base.removeLast() }
+        let scalars = Array(rawBase.utf8)
+        let drive = scalars.count >= 3 && scalars[2] == 47 && ((65...90).contains(scalars[0]) || (97...122).contains(scalars[0])) && scalars[1] == 58
+        guard !base.isEmpty, base.hasPrefix("/") || drive,
+              classes.filter({ $0.commandClass != .other }).count == 1 else { return nil }
+        let segment = segments[chosen]
+        guard ShellCommand.program(segment.words[0]) == Bytes(utf8: "mvn"), !segment.background else { return nil }
+        for prior in segments[..<chosen] {
+            guard let first = prior.words.first else { continue }
+            if ["cd", "pushd", "popd"].contains(ShellCommand.program(first).string) {
+                let words = prior.words.map(\.string)
+                guard prior.opAfter == .and, words.count == 2, words[1] != "-", !words[1].hasPrefix("~"),
+                      !words.contains(where: { word in "$`*?[".contains(where: { word.contains($0) }) }) else { return nil }
+            }
+        }
+        let args = segment.words.dropFirst().map(\.string)
+        let context = segment.context.string
+        guard !([base, context] + args).contains(where: { word in "$`*?[".contains(where: { word.contains($0) }) }) else { return nil }
+        let values: Set<String> = ["-pl", "--projects", "-f", "--file", "-s", "--settings", "-P", "--activate-profiles", "-T", "--threads", "-rf", "--resume-from", "-gs", "--global-settings", "-t", "--toolchains", "-l", "--log-file"]
+        let reject: Set<String> = ["-h", "--help", "-v", "--version", "-V", "--show-version", "-fn", "--fail-never"]
+        var kept: [String] = []
+        var goals: [String] = []
+        var i = 0
+        while i < args.count {
+            let word = args[i]
+            if reject.contains(word) { return nil }
+            if values.contains(word) {
+                guard i + 1 < args.count else { return nil }
+                kept += [word, args[i + 1]]
+                i += 2
+                continue
+            }
+            let bytes = Bytes(utf8: word)
+            if cosmetic.contains(bytes) || cosmeticPrefixes.contains(where: { bytes.hasPrefix($0) }) { i += 1; continue }
+            if word.hasPrefix("-D") {
+                let prop = String(word.dropFirst(2).split(separator: "=", maxSplits: 1, omittingEmptySubsequences: false)[0])
+                if ["test", "it.test", "skipTests", "surefire.failIfNoSpecifiedTests"].contains(prop) { i += 1; continue }
+                if (prop.lowercased().contains("skip") && prop != "maven.test.skip") || prop.lowercased().contains("failonerror") { return nil }
+            }
+            if word.hasPrefix("-") { kept.append(word) } else { goals.append(word) }
+            i += 1
+        }
+        if goals.first == "clean" { goals.removeFirst() }
+        guard goals.count == 1, ProgramRules.mvnBuild.contains(Bytes(utf8: goals[0])) || ProgramRules.mvnTest.contains(Bytes(utf8: goals[0])) else { return nil }
+        return TaskText.sha16(Bytes(utf8: (["maven-main-compile-v1", base, context] + kept).joined(separator: "\u{1f}")))
     }
 
     private static let cosmetic = TaskText.words([

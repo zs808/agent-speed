@@ -64,6 +64,7 @@ public enum TaskDumpJSON {
                 inner.add("suite", command.suite)
                 inner.add("targeted", command.targeted)
                 inner.add("key", command.key.hex)
+                if let key = command.mavenCompileKey { inner.add("mavenCompileKey", key.hex) }
                 object.add("command", raw: inner.text)
             }
             if let hunks = action.hunks {

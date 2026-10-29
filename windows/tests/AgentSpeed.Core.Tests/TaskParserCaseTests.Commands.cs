@@ -49,6 +49,9 @@ public sealed partial class TaskParserCaseTests
             ["background"] = expect.GetProperty("background").GetBoolean(),
             ["errorFilter"] = expect.GetProperty("errorFilter").GetBoolean(),
         };
+        if (info.MavenCompileKey is not null) actual["mavenCompileKey"] = info.MavenCompileKey;
+        if (expect.TryGetProperty("mavenCompileKey", out var coverage)) expected["mavenCompileKey"] = coverage.GetString();
+        Assert.Equal(expected.Count, actual.Count);
         foreach (var (name, value) in expected)
         {
             Assert.True(Equals(value, actual[name]), id + " " + name + ": expected " + value + ", got " + actual[name]);

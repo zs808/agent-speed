@@ -11,7 +11,7 @@ final class HistoryAnalyzer {
     /// 2: per-model measured output and time (METRICS 8). 3: cost (METRICS 9.7). 5: reasoning effort and speed.
     /// 6: the copied prefix of paginated Codex sub-agents (METRICS 3.5). 7: the unpriced facts (METRICS 9.10).
     /// 8: the task records (METRICS 6.11).
-    static let analysisVersion: Int64 = 8
+    static let analysisVersion: Int64 = 10
     /// A file whose last task was still open is analysed again once it has been quiet this long (METRICS 6.11 *Writes*).
     static let openTaskQuietMs: Int64 = 30 * 60_000
     /// The current price table version of the last complete run; when it changes, files with unpriced responses are

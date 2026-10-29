@@ -102,44 +102,29 @@ public sealed partial class TaskEvaluation
     private List<TaskAct> Sequence(int checkNo, List<TaskAct> own)
     {
         var first = own[0];
-        if (!first.Targeted || first.Suite is not { } suite)
-        {
-            return own;
-        }
-
-        if (!_source.FullPasses.TryGetValue(suite, out var passes))
-        {
-            return own;
-        }
-
         List<TaskAct>? covered = null;
-        var lo = 0;
-        var hi = passes.Count;
-        while (lo < hi)
+        if (!(first.Suite == "mvn compile" && first.Command?.MavenCompileKey is not null) && first.Targeted && first.Suite is { } suite
+            && _source.FullPasses.TryGetValue(suite, out var passes))
         {
-            var mid = (lo + hi) >>> 1;
-            if (passes[mid].RunOrdinal > first.RunOrdinal)
+            foreach (var pass in passes)
             {
-                hi = mid;
-            }
-            else
-            {
-                lo = mid + 1;
+                if (pass.RunOrdinal > first.RunOrdinal && pass.RunOrdinal < _runCount && pass.CheckNo != checkNo)
+                    (covered ??= []).Add(pass);
             }
         }
-
-        for (var p = lo; p < passes.Count && passes[p].RunOrdinal < _runCount; p++)
+        if (first.Suite == "mvn compile" && first.Command?.MavenCompileKey is { } compileKey)
         {
-            if (passes[p].CheckNo != checkNo)
+            for (var r = first.RunOrdinal + 1; r < _runCount; r++)
             {
-                (covered ??= []).Add(passes[p]);
+                var run = Run(r);
+                if (run.Result == RunResult.Pass && run.Command?.MavenCompileKey == compileKey && run.CheckNo != checkNo
+                    && run.Outcome?.T is { } completed
+                    && own.Where(p => p.Index < run.Index && p.Result == RunResult.Fail)
+                        .All(p => p.Outcome?.T is { } failedAt && failedAt <= completed))
+                    (covered ??= []).Add(run);
             }
         }
-
-        if (covered is null)
-        {
-            return own;
-        }
+        if (covered is null) return own;
 
         var merged = new List<TaskAct>(own.Count + covered.Count);
         int i = 0, j = 0;

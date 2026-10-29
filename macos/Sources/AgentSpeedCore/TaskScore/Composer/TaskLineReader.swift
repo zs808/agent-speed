@@ -100,8 +100,20 @@ struct TaskLineReader: Sendable {
         if kind == .command, let text = TaskParsers.commandText(source, tool: tool, input: input) {
             let found = TaskParsers.commandInfo(text, cwd: cwd)
             info = found
+            var compileKey = found.mavenCompileKey
+            if found.suite?.hasPrefix("mvn ") == true, source == .codex, TaskFamily(source)?.toolName(tool) == "exec_command" {
+                let object = input?.object ?? input?.string.flatMap { (try? JSONParser.parse($0))?.object }
+                if let workdir = object?["workdir"] {
+                    if let directory = workdir.string {
+                        if directory != cwd { compileKey = TaskParsers.commandInfo(text, cwd: directory).mavenCompileKey }
+                    } else {
+                        compileKey = nil
+                    }
+                }
+            }
             action.command = TaskCommand(commandClass: found.commandClass, suite: found.suite, targeted: found.targeted,
-                                         key: TaskDigest(hex: found.key) ?? .empty)
+                                         key: TaskDigest(hex: found.key) ?? .empty,
+                                         mavenCompileKey: compileKey.flatMap(TaskDigest.init(hex:)))
         } else if kind == .edit {
             action.hunks = TaskParsers.editHunks(source, tool: tool, input: input, cwd: cwd).map(TaskHunk.init)
         }

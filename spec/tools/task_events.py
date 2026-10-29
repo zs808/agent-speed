@@ -381,6 +381,12 @@ class Composer:
             if text is not None:
                 info = parsers.command_info(text, self.cwd)
                 event["command"] = {k: info[k] for k in COMMAND_FIELDS}
+                if (info.get("suite") or "").startswith("mvn "):
+                    compile_cwd = parsers.maven_compile_cwd(source, tool, value, self.cwd)
+                    coverage = (info if compile_cwd == self.cwd else parsers.command_info(text, compile_cwd)) \
+                        .get("mavenCompileKey")
+                    if coverage is not None:
+                        event["command"]["mavenCompileKey"] = coverage
         elif kind == "edit":
             event["hunks"] = parsers.edit_hunks(source, tool, value, self.cwd)
         self.events.append(event)

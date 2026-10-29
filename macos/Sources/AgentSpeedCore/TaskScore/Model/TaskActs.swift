@@ -9,9 +9,12 @@ enum TaskRunResult: Sendable {
 enum TaskCheckID: Hashable, Sendable {
     case key(TaskDigest)
     case suite(TaskOrdinalKey)
+    case mavenCompile(TaskDigest)
 
     init(_ command: TaskCommand) {
-        if !command.targeted, let suite = command.suite {
+        if command.suite == "mvn compile", let key = command.mavenCompileKey {
+            self = .mavenCompile(key)
+        } else if !command.targeted, let suite = command.suite {
             self = .suite(TaskOrdinalKey(suite))
         } else {
             self = .key(command.key)

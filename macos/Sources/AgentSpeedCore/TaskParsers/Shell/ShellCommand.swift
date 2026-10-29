@@ -24,6 +24,7 @@ final class ShellCommand {
     private(set) var patches: [Bytes] = []
     private(set) var appliesPatch = false
     private(set) var pipefail = false
+    private(set) var compileScopeUnsafe = false
 
     static let maxWrapperDepth = 4
 
@@ -44,6 +45,8 @@ final class ShellCommand {
         }
     }
 
+    private static let assignmentPrefix = Pattern(#"[A-Za-z_][A-Za-z0-9_]*="#)
+
     private static func lastOperator(_ ops: [ShellOperator]) -> ShellOperator? {
         ops.last { !$0.isParenthesis }
     }
@@ -59,6 +62,9 @@ final class ShellCommand {
             applyParentheses(segment.ops)
             let ops = carry + segment.ops
             carry = []
+            if segment.words.contains(where: { Self.assignmentPrefix.matches($0) && !$0.hasPrefix(Bytes(utf8: "JAVA_HOME=")) }) {
+                compileScopeUnsafe = true
+            }
             Self.dropKeywords(segment)
             Self.stripPrefixes(segment)
             Self.dropKeywords(segment)

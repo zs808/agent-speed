@@ -63,7 +63,7 @@ internal sealed partial class HistoryAnalyzer
     /// unpriced facts of the side table <c>contribution_unpriced</c> (METRICS 9.10).
     /// 8: the task records of the side table <c>task_records</c> (METRICS 6.11).
     /// </summary>
-    public const int AnalysisVersion = 8;
+    public const int AnalysisVersion = 10;
 
     private const string OpenCodeFamily = "opencode";
     private const string ZoneMeta = "timeZone";

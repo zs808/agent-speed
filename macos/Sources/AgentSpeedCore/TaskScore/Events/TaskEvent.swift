@@ -30,12 +30,14 @@ public struct TaskCommand: Equatable, Hashable, Sendable {
     public var suite: String?
     public var targeted: Bool
     public var key: TaskDigest
+    public var mavenCompileKey: TaskDigest?
 
-    public init(commandClass: TaskCommandClass, suite: String?, targeted: Bool, key: TaskDigest) {
+    public init(commandClass: TaskCommandClass, suite: String?, targeted: Bool, key: TaskDigest, mavenCompileKey: TaskDigest? = nil) {
         self.commandClass = commandClass
         self.suite = suite
         self.targeted = targeted
         self.key = key
+        self.mavenCompileKey = mavenCompileKey
     }
 }
 

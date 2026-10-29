@@ -337,6 +337,8 @@ def run_result(act):
 
 
 def check_id(command):
+    if command.get("suite") == "mvn compile" and command.get("mavenCompileKey") is not None:
+        return "maven-compile:" + command["mavenCompileKey"]
     if command.get("targeted") or command.get("suite") is None:
         return "key:" + command["key"]
     return "suite:" + command["suite"]
@@ -470,9 +472,19 @@ class Evaluation:
         for check, runs in own.items():
             first = runs[0]
             covered = list(runs)
-            if first.targeted and first.suite is not None:
+            if first.targeted and first.suite is not None and not (first.suite == "mvn compile"
+                    and first.command.get("mavenCompileKey") is not None):
                 covered += [r for r in self.runs if r.index > first.index and r.result == "pass" and not r.targeted
                             and r.suite == first.suite and r.check != check]
+            # A later standard Maven lifecycle pass also proves main compilation for the same scope.
+            # It cannot recover test failures, other modules/configurations or an unknown command scope.
+            compile_key = first.command.get("mavenCompileKey") if first.suite == "mvn compile" else None
+            if compile_key is not None:
+                covered += [r for r in self.runs if r.index > first.index and r.result == "pass"
+                            and r.command.get("mavenCompileKey") == compile_key and r not in covered
+                            and r.outcome.get("t") is not None
+                            and all(p.outcome.get("t") is not None and p.outcome["t"] <= r.outcome["t"]
+                                    for p in runs if p.index < r.index and p.result == "fail")]
             self.seq[check] = sorted(covered, key=lambda r: r.index)
         self.episodes = []          # (check, [failing runs], recovered)
         self.next_in_seq = {}

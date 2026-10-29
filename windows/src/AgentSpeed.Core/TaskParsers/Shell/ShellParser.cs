@@ -35,6 +35,8 @@ internal sealed class ShellParse
     public bool ApplyPatch { get; set; }
 
     public bool Pipefail { get; set; }
+
+    public bool CompileScopeUnsafe { get; set; }
 }
 
 /// <summary>Segments, directory contexts, shell wrappers and operators between segments (TASK-PARSERS 3.3).</summary>
@@ -89,6 +91,8 @@ internal static class ShellParser
             ApplyParens(seg.Ops, st);
             var ops = st.Carry.Count == 0 ? seg.Ops : [.. st.Carry, .. seg.Ops];
             st.Carry = [];
+            if (seg.Words.Any(word => ShellWords.IsAssignment(word) && !word.StartsWith("JAVA_HOME=", StringComparison.Ordinal)))
+                parsed.CompileScopeUnsafe = true;
             ShellWords.DropKeywords(seg);
             ShellWords.StripPrefixes(seg);
             ShellWords.DropKeywords(seg);

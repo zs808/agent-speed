@@ -113,13 +113,23 @@ internal abstract class TaskLineReader(SourceKind source)
     /// <summary>The call's action; a shell command is parsed once for its kind, its command info and its outcome.</summary>
     private (TaskAction Action, CommandInfo? Info, string? Continues, ShellAnalysis? Shell) Analyze(string tool, JsonElement input, string digest, long t)
     {
-        var (kind, _, shell) = ShellCommands.Classify(TaskFamilies.Of(Source), tool, input, Cwd);
+        var family = TaskFamilies.Of(Source);
+        var (kind, text, shell) = ShellCommands.Classify(family, tool, input, Cwd);
         TaskCommand? command = null;
         CommandInfo? info = null;
         IReadOnlyList<EditHunk>? hunks = null;
         if (kind == ActionKind.Command && shell is not null)
         {
             info = shell.Info;
+            var args = TaskJson.AsObject(input);
+            if (info.Suite?.StartsWith("mvn ", StringComparison.Ordinal) == true
+                && family == TaskFamily.Codex && TaskFamilies.ToolName(family, tool) == "exec_command"
+                && args is { } obj && TaskJson.Has(obj, "workdir"))
+            {
+                var workdir = TaskJson.String(TaskJson.Get(obj, "workdir"));
+                if (workdir != Cwd)
+                    info = info with { MavenCompileKey = text is null ? null : TaskParser.CommandInfo(text, workdir).MavenCompileKey };
+            }
             command = TaskCommand.Of(info);
         }
         else if (kind == ActionKind.Edit)

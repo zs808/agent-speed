@@ -28,7 +28,7 @@ public enum CommandClass
 /// run is narrowed, the 16-hex key of the normalised command, and the <see cref="Masked"/>, <see cref="Background"/>
 /// and <see cref="ErrorFilter"/> flags that <c>outcome</c> and <c>failures</c> read (3.7, 3.10).
 /// </summary>
-public sealed record CommandInfo(CommandClass Class, string? Suite, bool Targeted, string Key, bool Masked, bool Background, bool ErrorFilter);
+public sealed record CommandInfo(CommandClass Class, string? Suite, bool Targeted, string Key, bool Masked, bool Background, bool ErrorFilter, string? MavenCompileKey = null);
 
 /// <summary>
 /// <c>masked_status</c> (TASK-PARSERS 3.10): the status a masked command shows in its own output. A null

@@ -103,7 +103,9 @@ internal sealed class TaskAct
 
     public long? FailedCount => Failures?.FailedCount;
 
-    public CheckId Check => Command!.Targeted || Command.Suite is null ? new CheckId(false, Command.Key) : new CheckId(true, Command.Suite);
+    public CheckId Check => Command!.Suite == "mvn compile" && Command.MavenCompileKey is { } key
+        ? new CheckId(false, "maven-compile:" + key)
+        : Command.Targeted || Command.Suite is null ? new CheckId(false, Command.Key) : new CheckId(true, Command.Suite);
 
     /// <summary><c>run_result</c>.</summary>
     private static RunResult ResultOf(TaskOutcome? outcome, FailureReport? failures)

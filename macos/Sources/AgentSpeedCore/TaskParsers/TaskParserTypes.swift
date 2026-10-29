@@ -33,9 +33,10 @@ public struct TaskCommandInfo: Equatable, Hashable, Sendable {
     public var background: Bool
     /// Class build or check, and the chosen segment's output goes only through a grep for error lines (3.10).
     public var errorFilter: Bool
+    public var mavenCompileKey: String?
 
     public init(commandClass: TaskCommandClass, suite: String?, targeted: Bool, key: String, masked: Bool,
-                background: Bool, errorFilter: Bool) {
+                background: Bool, errorFilter: Bool, mavenCompileKey: String? = nil) {
         self.commandClass = commandClass
         self.suite = suite
         self.targeted = targeted
@@ -43,6 +44,7 @@ public struct TaskCommandInfo: Equatable, Hashable, Sendable {
         self.masked = masked
         self.background = background
         self.errorFilter = errorFilter
+        self.mavenCompileKey = mavenCompileKey
     }
 }
 

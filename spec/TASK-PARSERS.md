@@ -289,6 +289,24 @@ Gradle task names: `test`, a name matching `test[A-Z0-9].*`, or ending in `Test`
 `classes`, `installDist`, `bootJar`, `shadowJar` → build; `lint…`, `detekt`, `ktlintCheck`, `spotlessCheck`,
 `checkstyle…`, `pmd…`, `spotbugs…` → check; anything else → other.
 
+**Maven main-compilation coverage.** Following the [standard Maven lifecycle](https://maven.apache.org/guides/introduction/introduction-to-the-lifecycle.html), `command_info` may also return `mavenCompileKey`, a 16-hex digest
+of `maven-main-compile-v1`, the known absolute starting directory, the relative shell directory context, and the
+remaining Maven arguments, joined by U+001F. It is evidence only of the standard main-code `compile` phase:
+a successful later lifecycle phase can close a failed `mvn compile` with the same digest. It does not equate tests.
+
+Coverage requires one verifying shell segment and one phase from `MVN_BUILD` or `MVN_TEST`, optionally preceded
+by `clean`. Keep module/reactor selectors, POM paths, profiles, settings and other configuration tokens in order;
+remove cosmetic output options and `-Dtest=…`, `-Dit.test=…`, `-DskipTests[=…]` and
+`-Dsurefire.failIfNoSpecifiedTests=…`. Direct plugin goals, multiple phases/verifiers, masked/background runs,
+help/version/fail-never options, dynamic directories/arguments and compilation-suppression properties are excluded.
+A preceding directory change must be static, explicit and followed by `&&`; `cd -` is unknown. Environment
+assignments other than `JAVA_HOME` exclude coverage before shell-prefix removal, including on shell wrappers.
+`JAVA_HOME` may select a different compiler, but a successful lifecycle still provides main-compilation evidence.
+For Codex `exec_command`, use an explicit `workdir` for this digest; invalid explicit values give no digest rather
+than falling back to the session directory. Other existing parser fields and check rules keep their meaning.
+Only the digest is kept, never the source directory or command text. Maven plugins/POMs can override the standard
+lifecycle; this rule does not inspect project configuration or establish full-suite/business acceptance.
+
 ### 3.6 Package scripts and task runners
 
 **Script names.** A script or target name `n` (ASCII-folded) maps through the aliases `t`, `tst`, `tests` → `test`;
